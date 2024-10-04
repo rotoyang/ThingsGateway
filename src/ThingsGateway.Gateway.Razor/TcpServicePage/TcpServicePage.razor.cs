@@ -4,14 +4,14 @@
 //  源代码使用协议遵循本仓库的开源协议及附加协议
 //  Gitee源代码仓库：https://gitee.com/diego2098/ThingsGateway
 //  Github源代码仓库：https://github.com/kimdiego2098/ThingsGateway
-//  使用文档：https://kimdiego2098.github.io/
+//  使用文档：https://thingsgateway.cn/
 //  QQ群：605534569
 //------------------------------------------------------------------------------
 
 using Mapster;
 
-using ThingsGateway.Core.Json.Extension;
 using ThingsGateway.Foundation;
+using ThingsGateway.Foundation.Json.Extension;
 using ThingsGateway.Gateway.Application;
 
 using TouchSocket.Core;
@@ -76,7 +76,7 @@ public partial class TcpServicePage : IDriverUIBase
                     }
                     return data;
                 }).ToList();
-                data[i].PluginInfos = pluginInfos.ToSystemTextJsonString();
+                data[i].PluginInfos = pluginInfos.ToJsonNetString();
             }
 
             var query = data.GetQueryData(options);

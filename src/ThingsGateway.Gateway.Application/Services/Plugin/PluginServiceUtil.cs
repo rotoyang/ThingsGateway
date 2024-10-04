@@ -4,7 +4,7 @@
 //  源代码使用协议遵循本仓库的开源协议及附加协议
 //  Gitee源代码仓库：https://gitee.com/diego2098/ThingsGateway
 //  Github源代码仓库：https://github.com/kimdiego2098/ThingsGateway
-//  使用文档：https://kimdiego2098.github.io/
+//  使用文档：https://thingsgateway.cn/
 //  QQ群：605534569
 //------------------------------------------------------------------------------
 
@@ -16,10 +16,11 @@ using System.Collections.Concurrent;
 using System.Reflection;
 using System.Runtime.InteropServices;
 
-using ThingsGateway.NewLife.X.Extension;
+using ThingsGateway.NewLife.Extension;
 
 namespace ThingsGateway.Gateway.Application;
 
+[ThingsGateway.DependencyInjection.SuppressSniffer]
 public static class PluginServiceUtil
 {
     /// <summary>
@@ -164,7 +165,7 @@ public static class PluginServiceUtil
         else
         {
             // 如果没有找到 '.'，或者 '.' 是最后一个字符，则返回默认的键和插件名称
-            return (PluginService.DefaultKey, pluginName);
+            return (nameof(ThingsGateway), pluginName);
         }
     }
 

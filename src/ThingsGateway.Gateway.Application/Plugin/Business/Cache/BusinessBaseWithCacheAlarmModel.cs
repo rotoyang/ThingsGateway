@@ -4,13 +4,13 @@
 //  源代码使用协议遵循本仓库的开源协议及附加协议
 //  Gitee源代码仓库：https://gitee.com/diego2098/ThingsGateway
 //  Github源代码仓库：https://github.com/kimdiego2098/ThingsGateway
-//  使用文档：https://kimdiego2098.github.io/
+//  使用文档：https://thingsgateway.cn/
 //  QQ群：605534569
 //------------------------------------------------------------------------------
 
 using System.Collections.Concurrent;
 
-using ThingsGateway.Core.Extension;
+using ThingsGateway.Extension;
 using ThingsGateway.Foundation.Extension.Generic;
 
 namespace ThingsGateway.Gateway.Application;
@@ -18,7 +18,7 @@ namespace ThingsGateway.Gateway.Application;
 /// <summary>
 /// 业务插件，实现实体VarModel,AlarmModel缓存
 /// </summary>
-public abstract class BusinessBaseWithCacheAlarmModel<VarModel, DevModel, AlarmModel> : BusinessBaseWithCacheDevModel<VarModel, DevModel>
+public abstract class BusinessBaseWithCacheAlarmModel<VarModel, DevModel, AlarmModel> : BusinessBaseWithCacheDeviceModel<VarModel, DevModel>
 {
     protected ConcurrentQueue<CacheDBItem<AlarmModel>> _memoryAlarmModelQueue = new();
 

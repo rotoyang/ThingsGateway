@@ -4,7 +4,7 @@
 //  源代码使用协议遵循本仓库的开源协议及附加协议
 //  Gitee源代码仓库：https://gitee.com/diego2098/ThingsGateway
 //  Github源代码仓库：https://github.com/kimdiego2098/ThingsGateway
-//  使用文档：https://kimdiego2098.github.io/
+//  使用文档：https://thingsgateway.cn/
 //  QQ群：605534569
 //------------------------------------------------------------------------------
 
@@ -14,7 +14,6 @@ using Mapster;
 
 using System.Diagnostics.CodeAnalysis;
 
-using ThingsGateway.Core.Json.Extension;
 using ThingsGateway.Gateway.Application.Extensions;
 
 namespace ThingsGateway.Gateway.Application;
@@ -29,6 +28,7 @@ public class VariableRunTime : Variable, IVariable
     [AutoGenerateColumn(Visible = false)]
     [NotNull]
     public override long? DeviceId { get; set; }
+
 
     [AutoGenerateColumn(Visible = false, Filterable = true, Sortable = true, Order = 3)]
     public override string? Unit { get; set; }
@@ -131,7 +131,7 @@ public class VariableRunTime : Variable, IVariable
         get
         {
             if (_isOnline == false)
-                return VariableSource?.LastErrorMessage ?? VariableMethod?.LastErrorMessage ?? lastErrorMessage;
+                return lastErrorMessage ?? VariableSource?.LastErrorMessage ?? VariableMethod?.LastErrorMessage;
             else
                 return null;
         }
@@ -215,7 +215,10 @@ public class VariableRunTime : Variable, IVariable
                 }
                 else
                 {
-                    changed = data?.ToSystemTextJsonString(new()) != _value?.ToSystemTextJsonString(new());
+                    if (_value != null)
+                        changed = System.Text.Json.JsonSerializer.Serialize(data) != System.Text.Json.JsonSerializer.Serialize(_value);
+                    else
+                        changed = true;
                 }
             }
             else
@@ -247,10 +250,9 @@ public class VariableRunTime : Variable, IVariable
         return data.Values.FirstOrDefault();
     }
 
-    internal void SetErrorMessage(string value)
+    public void SetErrorMessage(string value)
     {
-        if (VariableSource != null)
-            VariableSource.LastErrorMessage = value;
+        lastErrorMessage = value;
     }
 
     #region LoadSourceRead

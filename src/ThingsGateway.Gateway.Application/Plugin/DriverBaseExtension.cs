@@ -4,12 +4,12 @@
 //  源代码使用协议遵循本仓库的开源协议及附加协议
 //  Gitee源代码仓库：https://gitee.com/diego2098/ThingsGateway
 //  Github源代码仓库：https://github.com/kimdiego2098/ThingsGateway
-//  使用文档：https://kimdiego2098.github.io/
+//  使用文档：https://thingsgateway.cn/
 //  QQ群：605534569
 //------------------------------------------------------------------------------
 
 using ThingsGateway.Foundation.Extension.Collection;
-using ThingsGateway.NewLife.X.Extension;
+using ThingsGateway.NewLife.Extension;
 
 namespace ThingsGateway.Gateway.Application;
 
@@ -42,14 +42,6 @@ public static class DriverBaseExtension
         // 尝试向全局设备字典中添加当前设备，使用设备名称作为键
         GlobalData.CollectDevices.TryAdd(newDevice.Name, newDevice);
 
-        // 从全局变量字典中移除与当前设备关联的变量
-        GlobalData.Variables.RemoveWhere(it => it.Value.DeviceId == oldDeviceId);
-
-        // 遍历当前设备的变量运行时集合，将其中的变量添加到全局变量字典中
-        foreach (var item in newDevice.VariableRunTimes)
-        {
-            GlobalData.Variables.TryAdd(item.Key, item.Value);
-        }
     }
     public static void RefreshBusinessDeviceRuntime(this DeviceRunTime newDevice, long oldDeviceId)
     {
@@ -63,7 +55,7 @@ public static class DriverBaseExtension
     public static void RemoveCollectDeviceRuntime(this IEnumerable<DriverBase> driverBases)
     {
         GlobalData.CollectDevices.RemoveWhere(it => driverBases.Any(a => a.DeviceId == it.Value.Id));
-        GlobalData.Variables.RemoveWhere(it => driverBases.Any(a => a.DeviceId == it.Value.DeviceId));
+
     }
     public static void RemoveBusinessDeviceRuntime(this IEnumerable<DriverBase> driverBases)
     {
@@ -72,7 +64,7 @@ public static class DriverBaseExtension
     public static void RemoveCollectDeviceRuntime(this DriverBase driverBase)
     {
         GlobalData.CollectDevices.RemoveWhere(it => driverBase.DeviceId == it.Value.Id);
-        GlobalData.Variables.RemoveWhere(it => driverBase.DeviceId == it.Value.DeviceId);
+
     }
     public static void RemoveBusinessDeviceRuntime(this DriverBase driverBase)
     {
@@ -95,25 +87,17 @@ public static class DriverBaseExtension
         return value; // 返回属性值
     }
 
-    /// <summary>
-    /// 获取变量的业务属性值
-    /// </summary>
-    /// <param name="variableRunTime">当前变量</param>
-    /// <param name="businessId">对应业务设备Id</param>
-    /// <param name="propertyName">属性名称</param>
-    /// <returns>属性值，如果不存在则返回null</returns>
-    public static string? GetPropertyValue(this VariableRunTime variableRunTime, long businessId, string propertyName)
-    {
-        if (variableRunTime == null || propertyName.IsNullOrWhiteSpace())
-            return null;
 
-        // 检查是否存在对应的业务设备Id
-        if (variableRunTime.VariablePropertys?.ContainsKey(businessId) == true)
-        {
-            variableRunTime.VariablePropertys[businessId].TryGetValue(propertyName, out var value);
-            return value; // 返回属性值
-        }
 
-        return null; // 未找到对应的业务设备Id，返回null
-    }
+}
+
+
+public interface IDynamicModel
+{
+    IEnumerable<dynamic> GetList(IEnumerable<object> datas);
+}
+
+public interface IDynamicModelData
+{
+    dynamic GeData(object datas);
 }

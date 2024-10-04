@@ -4,7 +4,7 @@
 //  源代码使用协议遵循本仓库的开源协议及附加协议
 //  Gitee源代码仓库：https://gitee.com/diego2098/ThingsGateway
 //  Github源代码仓库：https://github.com/kimdiego2098/ThingsGateway
-//  使用文档：https://kimdiego2098.github.io/
+//  使用文档：https://thingsgateway.cn/
 //  QQ群：605534569
 //------------------------------------------------------------------------------
 
@@ -50,17 +50,12 @@ public interface IPluginService
     /// <param name="pluginName"></param>
     /// <param name="businessBase"></param>
     /// <returns></returns>
-    (IEnumerable<IEditorItem> EditorItems, object Model) GetVariablePropertyTypes(string pluginName, BusinessBase? businessBase = null);
+    (IEnumerable<IEditorItem> EditorItems, object Model, Type VariablePropertyUIType) GetVariablePropertyTypes(string pluginName, BusinessBase? businessBase = null);
 
     /// <summary>
     /// 分页显示插件
     /// </summary>
     public QueryData<PluginOutput> Page(QueryPageOptions options, PluginTypeEnum? pluginTypeEnum = null);
-
-    /// <summary>
-    /// 清空全部插件信息
-    /// </summary>
-    void Remove();
 
     /// <summary>
     /// 添加插件

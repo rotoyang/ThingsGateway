@@ -4,7 +4,7 @@
 //  源代码使用协议遵循本仓库的开源协议及附加协议
 //  Gitee源代码仓库：https://gitee.com/diego2098/ThingsGateway
 //  Github源代码仓库：https://github.com/kimdiego2098/ThingsGateway
-//  使用文档：https://kimdiego2098.github.io/
+//  使用文档：https://thingsgateway.cn/
 //  QQ群：605534569
 //------------------------------------------------------------------------------
 
@@ -18,6 +18,10 @@ public class SysResourceSeedData : ISqlSugarEntitySeedData<SysResource>
     /// <inheritdoc/>
     public IEnumerable<SysResource> SeedData()
     {
-        return SeedDataUtil.GetSeedData<SysResource>(PathExtensions.CombinePathWithOs("SeedData", "Json", "seed_gateway_resource.json")).Concat(SeedDataUtil.GetSeedData<SysResource>(PathExtensions.CombinePathWithOs("SeedData", "Json", "seed_gateway_resourcebutton.json")));
+        var data1 = SeedDataUtil.GetSeedData<SysResource>(PathExtensions.CombinePathWithOs("SeedData", "Gateway", "seed_gateway_resource.json"));
+        var data2 = SeedDataUtil.GetSeedData<SysResource>(PathExtensions.CombinePathWithOs("SeedData", "Gateway", "seed_gateway_resourcebutton.json"));
+        var assembly = GetType().Assembly;
+        return SeedDataUtil.GetSeedDataByJson<SysResource>(SeedDataUtil.GetManifestResourceStream(assembly, "SeedData.Gateway.seed_gateway_resource.json")).Concat(SeedDataUtil.GetSeedDataByJson<SysResource>(SeedDataUtil.GetManifestResourceStream(assembly, "SeedData.Gateway.seed_gateway_resourcebutton.json"))).Concat(data1).Concat(data2);
+
     }
 }

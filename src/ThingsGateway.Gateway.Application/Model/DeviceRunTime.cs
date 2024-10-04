@@ -4,15 +4,15 @@
 //  源代码使用协议遵循本仓库的开源协议及附加协议
 //  Gitee源代码仓库：https://gitee.com/diego2098/ThingsGateway
 //  Github源代码仓库：https://github.com/kimdiego2098/ThingsGateway
-//  使用文档：https://kimdiego2098.github.io/
+//  使用文档：https://thingsgateway.cn/
 //  QQ群：605534569
 //------------------------------------------------------------------------------
 
 using Mapster;
 
-using ThingsGateway.Core.Extension;
-using ThingsGateway.NewLife.X.Extension;
-using ThingsGateway.NewLife.X.Threading;
+using ThingsGateway.Extension;
+using ThingsGateway.NewLife.Extension;
+using ThingsGateway.NewLife.Threading;
 
 namespace ThingsGateway.Gateway.Application;
 
@@ -30,7 +30,7 @@ public class DeviceRunTime : Device
     /// <summary>
     /// 设备活跃时间
     /// </summary>
-    public DateTime? ActiveTime { get; internal set; } = DateTime.UnixEpoch.ToLocalTime();
+    public DateTime? ActiveTime { get; set; } = DateTime.UnixEpoch.ToLocalTime();
 
     /// <summary>
     /// 通道表
@@ -57,7 +57,7 @@ public class DeviceRunTime : Device
             else
                 return DeviceStatusEnum.Pause;
         }
-        internal set
+        set
         {
             if (_deviceStatus != value)
             {
@@ -109,7 +109,7 @@ public class DeviceRunTime : Device
         {
             return _lastErrorMessage;
         }
-        internal set
+        set
         {
             if (!value.IsNullOrWhiteSpace())
                 _lastErrorMessage = TimerX.Now.ToDefaultDateTimeFormat() + " - " + value;
@@ -139,7 +139,8 @@ public class DeviceRunTime : Device
     /// <param name="activeTime"></param>
     /// <param name="errorCount"></param>
     /// <param name="lastErrorMessage"></param>
-    public void SetDeviceStatus(DateTime? activeTime = null, int? errorCount = null, string lastErrorMessage = null)
+    /// <param name="deviceStatus"></param>
+    public void SetDeviceStatus(DateTime? activeTime = null, int? errorCount = null, string lastErrorMessage = null, DeviceStatusEnum? deviceStatus = null)
     {
         //lock (this)
         {
@@ -149,6 +150,8 @@ public class DeviceRunTime : Device
                 ErrorCount = errorCount.Value;
             if (lastErrorMessage != null)
                 LastErrorMessage = lastErrorMessage;
+            if (deviceStatus != null)
+                DeviceStatus = deviceStatus.Value;
         }
     }
 }

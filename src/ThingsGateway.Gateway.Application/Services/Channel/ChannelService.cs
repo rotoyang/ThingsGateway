@@ -4,7 +4,7 @@
 //  源代码使用协议遵循本仓库的开源协议及附加协议
 //  Gitee源代码仓库：https://gitee.com/diego2098/ThingsGateway
 //  Github源代码仓库：https://github.com/kimdiego2098/ThingsGateway
-//  使用文档：https://kimdiego2098.github.io/
+//  使用文档：https://thingsgateway.cn/
 //  QQ群：605534569
 //------------------------------------------------------------------------------
 
@@ -26,15 +26,15 @@ using System.Text;
 
 using ThingsGateway.Extension.Generic;
 using ThingsGateway.Foundation.Extension.Dynamic;
+using ThingsGateway.FriendlyException;
 
 using TouchSocket.Core;
-using TouchSocket.SerialPorts;
 
 using Yitter.IdGenerator;
 
 namespace ThingsGateway.Gateway.Application;
 
-public class ChannelService : BaseService<Channel>, IChannelService
+internal class ChannelService : BaseService<Channel>, IChannelService
 {
     private readonly IDispatchService<Channel> _dispatchService;
 
@@ -71,7 +71,7 @@ public class ChannelService : BaseService<Channel>, IChannelService
     [OperDesc("ClearChannel", localizerType: typeof(Channel))]
     public async Task ClearChannelAsync()
     {
-        var deviceService = NetCoreApp.RootServices.GetRequiredService<IDeviceService>();
+        var deviceService = App.RootServices.GetRequiredService<IDeviceService>();
         using var db = GetDB();
         //事务
         var result = await db.UseTranAsync(async () =>
@@ -94,7 +94,7 @@ public class ChannelService : BaseService<Channel>, IChannelService
     [OperDesc("DeleteChannel", localizerType: typeof(Channel))]
     public async Task<bool> DeleteChannelAsync(IEnumerable<long> ids)
     {
-        var deviceService = NetCoreApp.RootServices.GetRequiredService<IDeviceService>();
+        var deviceService = App.RootServices.GetRequiredService<IDeviceService>();
         using var db = GetDB();
         //事务
         var result = await db.UseTranAsync(async () =>
@@ -117,7 +117,7 @@ public class ChannelService : BaseService<Channel>, IChannelService
     /// <inheritdoc />
     public void DeleteChannelFromCache()
     {
-        NetCoreApp.CacheService.Remove(ThingsGatewayCacheConst.Cache_Channel);//删除通道缓存
+        App.CacheService.Remove(ThingsGatewayCacheConst.Cache_Channel);//删除通道缓存
         _dispatchService.Dispatch(new());
     }
 
@@ -128,19 +128,14 @@ public class ChannelService : BaseService<Channel>, IChannelService
     public List<Channel> GetAll()
     {
         var key = ThingsGatewayCacheConst.Cache_Channel;
-        var channels = NetCoreApp.CacheService.Get<List<Channel>>(key);
+        var channels = App.CacheService.Get<List<Channel>>(key);
         if (channels == null)
         {
             using var db = GetDB();
             channels = db.Queryable<Channel>().ToList();
-            NetCoreApp.CacheService.Set(key, channels);
+            App.CacheService.Set(key, channels);
         }
         return channels;
-    }
-
-    public IChannel GetChannel(Channel channel, TouchSocketConfig config)
-    {
-        return config.GetChannel(channel.ChannelType, channel.RemoteUrl, channel.BindUrl, channel.Adapt<SerialPortOption>());
     }
 
     public Channel? GetChannelById(long id)

@@ -1,12 +1,12 @@
-﻿//------------------------------------------------------------------------------
-//  此代码版权声明为全文件覆盖，如有原作者特别声明，会在下方手动补充
-//  此代码版权（除特别声明外的代码）归作者本人Diego所有
-//  源代码使用协议遵循本仓库的开源协议及附加协议
-//  Gitee源代码仓库：https://gitee.com/diego2098/ThingsGateway
-//  Github源代码仓库：https://github.com/kimdiego2098/ThingsGateway
-//  使用文档：https://kimdiego2098.github.io/
-//  QQ群：605534569
-//------------------------------------------------------------------------------
+﻿// ------------------------------------------------------------------------------
+// 此代码版权声明为全文件覆盖，如有原作者特别声明，会在下方手动补充
+// 此代码版权（除特别声明外的代码）归作者本人Diego所有
+// 源代码使用协议遵循本仓库的开源协议及附加协议
+// Gitee源代码仓库：https://gitee.com/diego2098/ThingsGateway
+// Github源代码仓库：https://github.com/kimdiego2098/ThingsGateway
+// 使用文档：https://thingsgateway.cn/
+// QQ群：605534569
+// ------------------------------------------------------------------------------
 
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Localization;
@@ -15,8 +15,8 @@ using Newtonsoft.Json.Linq;
 
 using System.Collections.Concurrent;
 
-using ThingsGateway.Core.Extension;
 using ThingsGateway.Core.Json.Extension;
+using ThingsGateway.Extension;
 using ThingsGateway.Foundation.Extension.Collection;
 
 using TouchSocket.Core;
@@ -26,7 +26,7 @@ namespace ThingsGateway.Gateway.Application;
 /// <summary>
 /// 变量写入/执行变量方法
 /// </summary>
-public class RpcService : IRpcService
+internal class RpcService : IRpcService
 {
     private readonly ConcurrentQueue<RpcLog> _logQueues = new();
 
@@ -47,18 +47,19 @@ public class RpcService : IRpcService
         Dictionary<CollectBase, Dictionary<VariableRunTime, JToken>> WriteMethods = new();
         // 用于存储结果的并发字典
         ConcurrentDictionary<string, OperResult> results = new();
+        var dict = GlobalData.Variables.ToDictionary(a => a.Key, a => a.Value);
 
         // 对每个要操作的变量进行检查和处理
         foreach (var item in items)
         {
             // 查找变量是否存在
-            if (!GlobalData.Variables.ContainsKey(item.Key))
+            if (!dict.ContainsKey(item.Key))
             {
                 // 如果变量不存在，则添加错误信息到结果中并继续下一个变量的处理
                 results.TryAdd(item.Key, new OperResult(Localizer["VariableNotNull", item.Key]));
                 continue;
             }
-            var tag = GlobalData.Variables[item.Key];
+            var tag = dict[item.Key];
 
             // 检查变量的保护类型和远程写入权限
             if (tag.ProtectType == ProtectTypeEnum.ReadOnly)
@@ -73,7 +74,7 @@ public class RpcService : IRpcService
             }
 
             // 查找变量对应的设备
-            var dev = (CollectBase)HostedServiceUtil.CollectDeviceHostedService.DriverBases.FirstOrDefault(it => it.DeviceId == tag.DeviceId);
+            var dev = (CollectBase)GlobalData.CollectDeviceHostedService.DriverBases.FirstOrDefault(it => it.DeviceId == tag.DeviceId);
             if (dev == null)
             {
                 // 如果设备不存在，则添加错误信息到结果中并继续下一个变量的处理
@@ -136,8 +137,8 @@ public class RpcService : IRpcService
                     string parJson;
                     if (resultItem.Key.IsNullOrEmpty())
                     {
-                        operObj = items.Select(x => x.Key).ToSystemTextJsonString();
-                        parJson = items.Select(x => x.Value).ToSystemTextJsonString();
+                        operObj = items.Select(x => x.Key).ToJsonNetString();
+                        parJson = items.Select(x => x.Value).ToJsonNetString();
                     }
                     else
                     {
@@ -236,7 +237,7 @@ public class RpcService : IRpcService
     private async Task RpcLogInsertAsync()
     {
         var db = DbContext.Db.GetConnectionScopeWithAttr<RpcLog>().CopyNew(); // 创建一个新的数据库上下文实例
-        var appLifetime = NetCoreApp.RootServices!.GetService<IHostApplicationLifetime>()!;
+        var appLifetime = App.RootServices!.GetService<IHostApplicationLifetime>()!;
         // 在应用程序未停止的情况下循环执行日志插入操作
         while (!((appLifetime?.ApplicationStopping ?? default).IsCancellationRequested || (appLifetime?.ApplicationStopped ?? default).IsCancellationRequested))
         {

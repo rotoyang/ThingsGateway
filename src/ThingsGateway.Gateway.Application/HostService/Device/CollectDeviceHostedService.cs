@@ -4,12 +4,14 @@
 //  源代码使用协议遵循本仓库的开源协议及附加协议
 //  Gitee源代码仓库：https://gitee.com/diego2098/ThingsGateway
 //  Github源代码仓库：https://github.com/kimdiego2098/ThingsGateway
-//  使用文档：https://kimdiego2098.github.io/
+//  使用文档：https://thingsgateway.cn/
 //  QQ群：605534569
 //------------------------------------------------------------------------------
 
 using Microsoft.Extensions.Localization;
 using Microsoft.Extensions.Logging;
+
+using Newtonsoft.Json.Linq;
 
 using ThingsGateway.Gateway.Application.Extensions;
 
@@ -20,27 +22,30 @@ namespace ThingsGateway.Gateway.Application;
 /// <summary>
 /// 采集设备服务
 /// </summary>
-public class CollectDeviceHostedService : DeviceHostedService
+internal class CollectDeviceHostedService : DeviceHostedService, ICollectDeviceHostedService
 {
     /// <summary>
     /// 线程检查时间，10分钟
     /// </summary>
     public const int CheckIntervalTime = 600;
 
-    private EasyLock _easyLock = new(false);
+    private WaitLock _easyLock = new(false);
 
     /// <summary>
     /// 已执行CreatThreads
     /// </summary>
     private volatile bool started = false;
 
-    private EasyLock publicRestartLock = new();
-    private IStringLocalizer Localizer { get; }
+    private WaitLock publicRestartLock = new();
+    private IStringLocalizer CollectDeviceHostedServiceLocalizer { get; }
+
+    /// <inheritdoc/>
+    public bool StartCollectDeviceEnable { get; set; } = true;
 
     public CollectDeviceHostedService(ILogger<CollectDeviceHostedService> logger, IStringLocalizer<CollectDeviceHostedService> localizer)
     {
         _logger = logger;
-        Localizer = localizer;
+        CollectDeviceHostedServiceLocalizer = localizer;
     }
 
     #region 服务
@@ -48,7 +53,10 @@ public class CollectDeviceHostedService : DeviceHostedService
     /// <inheritdoc/>
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
-        await HostedServiceUtil.ManagementHostedService.StartLock.WaitAsync().ConfigureAwait(false);
+        await Task.Yield();
+        await Task.Delay(30000);
+        if (StartCollectDeviceEnable)
+            await StartAsync().ConfigureAwait(false);
         GlobalData.DeviceStatusChangeEvent += DeviceRedundantThread;
         while (!stoppingToken.IsCancellationRequested)
         {
@@ -69,7 +77,7 @@ public class CollectDeviceHostedService : DeviceHostedService
                         {
                             //线程卡死/初始化失败检测
                             if ((driverBase.CurrentDevice.ActiveTime != null && driverBase.CurrentDevice.ActiveTime != DateTime.UnixEpoch.ToLocalTime() && driverBase.CurrentDevice.ActiveTime.Value.AddMinutes(CheckIntervalTime) <= DateTime.Now)
-                                || (driverBase.IsInitSuccess == false))
+                                || (driverBase.IsInitSuccess == false) && !driverBase.DisposedValue)
                             {
                                 //如果线程处于暂停状态，跳过
                                 if (driverBase.CurrentDevice.DeviceStatus == DeviceStatusEnum.Pause)
@@ -126,18 +134,20 @@ public class CollectDeviceHostedService : DeviceHostedService
     #endregion
 
 
+    /// <inheritdoc/>
     public event RestartEventHandler Started;
 
+    /// <inheritdoc/>
     public event RestartEventHandler Starting;
 
+    /// <inheritdoc/>
     public event RestartEventHandler Stoped;
 
+    /// <inheritdoc/>
     public event RestartEventHandler Stoping;
 
 
-    /// <summary>
-    /// 更新设备线程
-    /// </summary>
+    /// <inheritdoc/>
     public override async Task RestartChannelThreadAsync(long deviceId, bool isChanged, bool deleteCache = false)
     {
         try
@@ -194,7 +204,47 @@ public class CollectDeviceHostedService : DeviceHostedService
                     {
                         // 如果设备已更改，则执行启动前的操作
                         if (isChanged)
+                        {
+                            try
+                            {
+                                //添加保存数据变量读取操作
+                                var saveVariable = dev.VariableRunTimes.Where(a => a.Value.SaveValue).ToDictionary(a => a.Value.Id, a => a.Value);
+
+                                if (saveVariable.Any())
+                                {
+                                    var cacheDb = CacheDBUtil.GetCache(typeof(CacheDBItem<JToken>), nameof(VariableRunTime), nameof(VariableRunTime.SaveValue));
+                                    var varList = await cacheDb.DBProvider.Queryable<CacheDBItem<JToken>>().ToListAsync().ConfigureAwait(false);
+
+                                    for (int i = 0; i < varList.Count; i++)
+                                    {
+                                        var varValue = varList[i];
+                                        if (saveVariable.TryGetValue(varValue.Id, out var variable))
+                                        {
+                                            if (varValue.Value is JValue jValue)
+                                            {
+                                                variable.Value = jValue.Value;
+                                            }
+                                            else
+                                            {
+                                                variable.Value = varValue.Value;
+                                            }
+                                        }
+                                    }
+                                    cacheDb.SafeDispose();
+                                }
+                            }
+                            catch (Exception ex)
+                            {
+                                _logger.LogWarning(ex, "SaveValue");
+                            }
+
                             await OnCollectDeviceStarting().ConfigureAwait(false);
+
+                        }
+
+
+
+
 
                         try
                         {
@@ -240,6 +290,7 @@ public class CollectDeviceHostedService : DeviceHostedService
         }
     }
 
+    /// <inheritdoc/>
     public async Task RestartAsync(bool removeDevice = true)
     {
         try
@@ -257,7 +308,7 @@ public class CollectDeviceHostedService : DeviceHostedService
     /// <summary>
     /// 启动/创建全部设备，如果没有找到设备会创建
     /// </summary>
-    internal async Task StartAsync()
+    public async Task StartAsync()
     {
         try
         {
@@ -271,6 +322,8 @@ public class CollectDeviceHostedService : DeviceHostedService
                 await CreatAllChannelThreadsAsync().ConfigureAwait(false);
                 await OnCollectDeviceStarting().ConfigureAwait(false);
             }
+
+            await ReadValue().ConfigureAwait(false);
             await StartAllChannelThreadsAsync().ConfigureAwait(false);
             await OnCollectDeviceStarted().ConfigureAwait(false);
             _ = Task.Run(() =>
@@ -290,9 +343,53 @@ public class CollectDeviceHostedService : DeviceHostedService
         }
     }
 
-    /// <summary>
-    /// 停止
-    /// </summary>
+    private async Task ReadValue()
+    {
+        try
+        {
+            //添加保存数据变量读取操作
+            var saveVariable = GlobalData.ReadOnlyVariables.Where(a => a.Value.SaveValue).ToDictionary(a => a.Value.Id, a => a.Value);
+            var cacheDb = CacheDBUtil.GetCache(typeof(CacheDBItem<JToken>), nameof(VariableRunTime), nameof(VariableRunTime.SaveValue));
+            cacheDb.InitDb();
+
+            {
+                var varList = await cacheDb.DBProvider.Queryable<CacheDBItem<JToken>>().ToListAsync().ConfigureAwait(false);
+                List<long> ids = new List<long>();
+                for (int i = 0; i < varList.Count; i++)
+                {
+                    var varValue = varList[i];
+                    var has = saveVariable.Any();
+                    if (has && saveVariable.TryGetValue(varValue.Id, out var variable))
+                    {
+                        if (varValue.Value is JValue jValue)
+                        {
+                            variable.Value = jValue.Value;
+                        }
+                        else
+                        {
+                            variable.Value = varValue.Value;
+                        }
+                    }
+                    else
+                    {
+                        ids.Add(varValue.Id);
+                    }
+                }
+
+                if (ids.Any())
+                {
+                    await cacheDb.DBProvider.Deleteable<CacheDBItem<JToken>>(ids).ExecuteCommandAsync().ConfigureAwait(false);
+                }
+                cacheDb.SafeDispose();
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "SaveValue");
+        }
+    }
+
+    /// <inheritdoc/>
     public async Task StopAsync(bool removeDevice)
     {
         try
@@ -305,6 +402,9 @@ public class CollectDeviceHostedService : DeviceHostedService
                 await BeforeRemoveAllChannelThreadAsync().ConfigureAwait(false);
                 //取消其他后台服务
                 await OnCollectDeviceStoping().ConfigureAwait(false);
+
+                await SaveValue().ConfigureAwait(false);
+
                 //停止全部采集线程
                 await RemoveAllChannelThreadAsync(removeDevice).ConfigureAwait(false);
                 //停止其他后台服务
@@ -331,6 +431,35 @@ public class CollectDeviceHostedService : DeviceHostedService
         }
     }
 
+    private async Task SaveValue()
+    {
+        try
+        {
+            //添加保存数据变量读取操作
+            var saveVariable = DriverBases.SelectMany(a => a.CurrentDevice.VariableRunTimes).Where(a => a.Value.SaveValue).Select(a =>
+            {
+                return new CacheDBItem<JToken>()
+                {
+                    Id = a.Value.Id,
+                    Value = JToken.FromObject(a.Value.Value)
+                };
+            }).ToList();
+
+            if (saveVariable.Any())
+            {
+                var cacheDb = CacheDBUtil.GetCache(typeof(CacheDBItem<JToken>), nameof(VariableRunTime), nameof(VariableRunTime.SaveValue));
+
+                await cacheDb.DBProvider.Fastest<CacheDBItem<JToken>>().PageSize(100000).BulkMergeAsync(saveVariable).ConfigureAwait(false);
+
+                cacheDb.SafeDispose();
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "SaveValue");
+        }
+    }
+
     /// <summary>
     /// 读取数据库，创建全部设备
     /// </summary>
@@ -339,7 +468,7 @@ public class CollectDeviceHostedService : DeviceHostedService
     {
         if (!_stoppingToken.IsCancellationRequested)
         {
-            _logger.LogInformation(Localizer["DeviceRuntimeGeting"]);
+            _logger.LogInformation(CollectDeviceHostedServiceLocalizer["DeviceRuntimeGeting"]);
             var collectDeviceRunTimes = (await DeviceService.GetCollectDeviceRuntimeAsync().ConfigureAwait(false));
             var idSet = collectDeviceRunTimes.Where(a => a.RedundantEnable && a.RedundantDeviceId != null).Select(a => a.RedundantDeviceId ?? 0).ToHashSet().ToDictionary(a => a);
             var result = collectDeviceRunTimes.Where(a => !idSet.ContainsKey(a.Id));
@@ -368,14 +497,14 @@ public class CollectDeviceHostedService : DeviceHostedService
                 {
                     try
                     {
-                        ExpressionEvaluatorExtension.AddScript(script);
+                        _ = ExpressionEvaluatorExtension.GetOrAddScript(script);
                     }
                     catch
                     {
                     }
                 }
             });
-            _logger.LogInformation(Localizer["DeviceRuntimeGeted"]);
+            _logger.LogInformation(CollectDeviceHostedServiceLocalizer["DeviceRuntimeGeted"]);
         }
         for (int i = 0; i < 3; i++)
         {
@@ -455,8 +584,5 @@ public class CollectDeviceHostedService : DeviceHostedService
     }
 
     #endregion
-
-
-
 
 }

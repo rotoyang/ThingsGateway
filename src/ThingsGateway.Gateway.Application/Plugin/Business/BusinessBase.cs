@@ -4,7 +4,7 @@
 //  源代码使用协议遵循本仓库的开源协议及附加协议
 //  Gitee源代码仓库：https://gitee.com/diego2098/ThingsGateway
 //  Github源代码仓库：https://github.com/kimdiego2098/ThingsGateway
-//  使用文档：https://kimdiego2098.github.io/
+//  使用文档：https://thingsgateway.cn/
 //  QQ群：605534569
 //------------------------------------------------------------------------------
 
@@ -25,6 +25,11 @@ public abstract class BusinessBase : DriverBase
     /// 当前关联的采集设备
     /// </summary>
     public IReadOnlyDictionary<string, CollectDeviceRunTime> CollectDevices { get; protected set; }
+
+    /// <summary>
+    /// 变量属性UI Type，如果不存在，返回null
+    /// </summary>
+    public virtual Type DriverVariablePropertyUIType { get; }
 
     public override DriverPropertyBase DriverProperties => _businessPropertyBase;
 
@@ -59,7 +64,7 @@ public abstract class BusinessBase : DriverBase
     /// <param name="device">设备运行时实例。</param>
     internal protected override void Init(DeviceRunTime device)
     {
-        BusinessBaseLocalizer = NetCoreApp.CreateLocalizerByType(typeof(BusinessBase))!;
+        BusinessBaseLocalizer = App.CreateLocalizerByType(typeof(BusinessBase))!;
         base.Init(device); // 调用基类的初始化方法
 
         // 获取与当前设备相关的变量

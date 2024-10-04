@@ -4,7 +4,7 @@
 //  源代码使用协议遵循本仓库的开源协议及附加协议
 //  Gitee源代码仓库：https://gitee.com/diego2098/ThingsGateway
 //  Github源代码仓库：https://github.com/kimdiego2098/ThingsGateway
-//  使用文档：https://kimdiego2098.github.io/
+//  使用文档：https://thingsgateway.cn/
 //  QQ群：605534569
 //------------------------------------------------------------------------------
 
@@ -13,8 +13,7 @@ using Microsoft.AspNetCore.Components.Forms;
 using System.Collections.Concurrent;
 
 using ThingsGateway.Gateway.Application;
-using ThingsGateway.NewLife.X;
-using ThingsGateway.Razor;
+using ThingsGateway.NewLife.Extension;
 
 using TouchSocket.Core;
 
@@ -68,6 +67,7 @@ public partial class VariableEditComponent
     private IPluginService PluginService { get; set; }
 
     private ConcurrentDictionary<long, IEnumerable<IEditorItem>>? VariablePropertyEditors { get; set; } = new();
+    private ConcurrentDictionary<long, RenderFragment>? VariablePropertyRenderFragments { get; set; } = new();
 
     public async Task ValidSubmit(EditContext editContext)
     {
@@ -123,6 +123,17 @@ public partial class VariableEditComponent
                 Model.VariablePropertyModels ??= new();
                 Model.VariablePropertyModels.AddOrUpdate(id, (a) => new ModelValueValidateForm() { Value = data.Model }, (a, b) => new ModelValueValidateForm() { Value = data.Model });
                 VariablePropertyEditors.TryAdd(id, data.EditorItems);
+
+                if (data.VariablePropertyUIType != null)
+                {
+                    var component = new ThingsGatewayDynamicComponent(data.VariablePropertyUIType, new Dictionary<string, object?>
+                    {
+                        [nameof(VariableEditComponent.Model)] = Model,
+                        [nameof(DeviceEditComponent.PluginPropertyEditorItems)] = data.EditorItems,
+                    });
+                    VariablePropertyRenderFragments.AddOrUpdate(id, component.Render());
+                }
+
                 if (Model.VariablePropertys.TryGetValue(id, out var dict))
                 {
                     PluginServiceUtil.SetModel(data.Model, dict);

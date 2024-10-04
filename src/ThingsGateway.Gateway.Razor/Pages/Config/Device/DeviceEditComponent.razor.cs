@@ -4,7 +4,7 @@
 //  源代码使用协议遵循本仓库的开源协议及附加协议
 //  Gitee源代码仓库：https://gitee.com/diego2098/ThingsGateway
 //  Github源代码仓库：https://github.com/kimdiego2098/ThingsGateway
-//  使用文档：https://kimdiego2098.github.io/
+//  使用文档：https://thingsgateway.cn/
 //  QQ群：605534569
 //------------------------------------------------------------------------------
 
@@ -12,7 +12,6 @@ using Microsoft.AspNetCore.Components.Forms;
 using Microsoft.AspNetCore.Components.Web;
 
 using ThingsGateway.Gateway.Application;
-using ThingsGateway.Razor;
 
 using TouchSocket.Core;
 
@@ -20,7 +19,7 @@ namespace ThingsGateway.Gateway.Razor;
 
 public partial class DeviceEditComponent
 {
-    private IEnumerable<IEditorItem> PluginPropertyEditorItems;
+    internal IEnumerable<IEditorItem> PluginPropertyEditorItems;
 
     private RenderFragment UIRenderFragment;
     private Type PropertyUIType;

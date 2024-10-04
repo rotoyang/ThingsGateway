@@ -4,7 +4,7 @@
 //  源代码使用协议遵循本仓库的开源协议及附加协议
 //  Gitee源代码仓库：https://gitee.com/diego2098/ThingsGateway
 //  Github源代码仓库：https://github.com/kimdiego2098/ThingsGateway
-//  使用文档：https://kimdiego2098.github.io/
+//  使用文档：https://thingsgateway.cn/
 //  QQ群：605534569
 //------------------------------------------------------------------------------
 
@@ -121,6 +121,14 @@ public class Variable : PrimaryIdEntity
     [SugarColumn(ColumnDescription = "远程写入", IsNullable = true)]
     [AutoGenerateColumn(Visible = true, Filterable = true, Sortable = true)]
     public virtual bool RpcWriteEnable { get; set; } = true;
+
+
+    /// <summary>
+    /// 保存值
+    /// </summary>
+    [SugarColumn(ColumnDescription = "保存值", IsNullable = true)]
+    [AutoGenerateColumn(Visible = true, Filterable = true, Sortable = true)]
+    public virtual bool SaveValue { get; set; } = false;
 
     /// <summary>
     /// 变量额外属性Json

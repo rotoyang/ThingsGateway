@@ -4,7 +4,7 @@
 //  源代码使用协议遵循本仓库的开源协议及附加协议
 //  Gitee源代码仓库：https://gitee.com/diego2098/ThingsGateway
 //  Github源代码仓库：https://github.com/kimdiego2098/ThingsGateway
-//  使用文档：https://kimdiego2098.github.io/
+//  使用文档：https://thingsgateway.cn/
 //  QQ群：605534569
 //------------------------------------------------------------------------------
 
@@ -14,7 +14,7 @@ using SqlSugar;
 
 using System.Collections.Concurrent;
 
-using ThingsGateway.Core.Extension;
+using ThingsGateway.Extension;
 using ThingsGateway.Logging;
 
 using LogLevel = Microsoft.Extensions.Logging.LogLevel;
@@ -32,7 +32,7 @@ public class BackendLogDatabaseLoggingWriter : IDatabaseLoggingWriter
     private readonly ConcurrentQueue<BackendLog> _logQueues = new();
 
     // 自定义日志级别，默认为警告级别
-    private LogLevel CustomLevel = NetCoreApp.Configuration.GetSection("Logging:BackendLog:LogLevel:Default").Get<LogLevel?>() ?? LogLevel.Warning;
+    private LogLevel CustomLevel = App.Configuration.GetSection("Logging:BackendLog:LogLevel:Default").Get<LogLevel?>() ?? LogLevel.Warning;
 
     // SqlSugar客户端实例
     private SqlSugarClient SqlSugarClient;

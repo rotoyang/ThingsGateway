@@ -4,7 +4,7 @@
 //  源代码使用协议遵循本仓库的开源协议及附加协议
 //  Gitee源代码仓库：https://gitee.com/diego2098/ThingsGateway
 //  Github源代码仓库：https://github.com/kimdiego2098/ThingsGateway
-//  使用文档：https://kimdiego2098.github.io/
+//  使用文档：https://thingsgateway.cn/
 //  QQ群：605534569
 //------------------------------------------------------------------------------
 
@@ -26,6 +26,7 @@ using System.Text;
 
 using ThingsGateway.Extension.Generic;
 using ThingsGateway.Foundation.Extension.Dynamic;
+using ThingsGateway.FriendlyException;
 
 using TouchSocket.Core;
 
@@ -33,7 +34,7 @@ using Yitter.IdGenerator;
 
 namespace ThingsGateway.Gateway.Application;
 
-public class VariableService : BaseService<Variable>, IVariableService
+internal class VariableService : BaseService<Variable>, IVariableService
 {
     protected readonly IChannelService _channelService;
     protected readonly IDeviceService _deviceService;
@@ -47,9 +48,9 @@ public class VariableService : BaseService<Variable>, IVariableService
    IDispatchService<bool> allDispatchService
         )
     {
-        _channelService = NetCoreApp.RootServices.GetRequiredService<IChannelService>();
-        _pluginService = NetCoreApp.RootServices.GetRequiredService<IPluginService>();
-        _deviceService = NetCoreApp.RootServices.GetRequiredService<IDeviceService>();
+        _channelService = App.RootServices.GetRequiredService<IChannelService>();
+        _pluginService = App.RootServices.GetRequiredService<IPluginService>();
+        _deviceService = App.RootServices.GetRequiredService<IDeviceService>();
         _dispatchService = dispatchService;
         _allDispatchService = allDispatchService;
     }
@@ -62,7 +63,7 @@ public class VariableService : BaseService<Variable>, IVariableService
         List<Device> newDevices = new();
         List<Variable> newVariables = new();
         var addressNum = 1;
-        var variableCount = 1000;
+        var variableCount = 10000;
         var channelCount = Math.Max(count / variableCount, 1);
         for (int i = 0; i < channelCount; i++)
         {
@@ -90,8 +91,8 @@ public class VariableService : BaseService<Variable>, IVariableService
                 //动态插件属性默认
                 newDevices.Add(device);
             }
-            if (channelCount == i + 1 && (count % 1000) != 0)
-                variableCount = Math.Min(count % 1000, 1000);
+            if (channelCount == i + 1 && (count % 10000) != 0)
+                variableCount = Math.Min(count % 10000, 10000);
             for (int i1 = 0; i1 < variableCount; i1++)
             {
                 addressNum++;
@@ -138,9 +139,9 @@ public class VariableService : BaseService<Variable>, IVariableService
 
         var result = await db.UseTranAsync(async () =>
         {
-            await db.Fastest<Channel>().PageSize(50000).BulkCopyAsync(newChannels).ConfigureAwait(false);
-            await db.Fastest<Device>().PageSize(50000).BulkCopyAsync(newDevices).ConfigureAwait(false);
-            await db.Fastest<Variable>().PageSize(50000).BulkCopyAsync(newVariables).ConfigureAwait(false);
+            await db.Fastest<Channel>().PageSize(100000).BulkCopyAsync(newChannels).ConfigureAwait(false);
+            await db.Fastest<Device>().PageSize(100000).BulkCopyAsync(newDevices).ConfigureAwait(false);
+            await db.Fastest<Variable>().PageSize(100000).BulkCopyAsync(newVariables).ConfigureAwait(false);
         }).ConfigureAwait(false);
         if (result.IsSuccess)//如果成功了
         {
@@ -341,7 +342,7 @@ public class VariableService : BaseService<Variable>, IVariableService
         //变量页
         ConcurrentList<Dictionary<string, object>> variableExports = new();
         //变量附加属性，转成Dict<表名,List<Dict<列名，列数据>>>的形式
-        ConcurrentDictionary<string, ConcurrentList<ConcurrentDictionary<string, object>>> devicePropertys = new();
+        ConcurrentDictionary<string, ConcurrentList<Dictionary<string, object>>> devicePropertys = new();
         ConcurrentDictionary<string, (VariablePropertyBase, Dictionary<string, PropertyInfo>)> propertysDict = new();
 
         #region 列名称
@@ -394,7 +395,7 @@ public class VariableService : BaseService<Variable>, IVariableService
             {
                 //插件属性
                 //单个设备的行数据
-                ConcurrentDictionary<string, object> driverInfo = new();
+                Dictionary<string, object> driverInfo = new();
                 var has = deviceDicts.TryGetValue(item.Key, out var businessDevice);
                 if (!has)
                     continue;
@@ -414,7 +415,7 @@ public class VariableService : BaseService<Variable>, IVariableService
                     var variablePropertyType = variableProperty.GetType();
                     propertys.Item2 = variablePropertyType.GetRuntimeProperties()
        .Where(a => a.GetCustomAttribute<DynamicPropertyAttribute>() != null)
-       .ToDictionary(a => variablePropertyType.GetPropertyDisplayName(a.Name));
+       .ToDictionary(a => variablePropertyType.GetPropertyDisplayName(a.Name, a => a.GetCustomAttribute<DynamicPropertyAttribute>(true)?.Description));
                     propertysDict.TryAdd(businessDevice.PluginName, propertys);
                 }
 
@@ -681,11 +682,11 @@ public class VariableService : BaseService<Variable>, IVariableService
                             propertys.Item1 = variablePropertyType;
                             propertys.Item2 = variablePropertyType.GetRuntimeProperties()
                                 .Where(a => a.GetCustomAttribute<DynamicPropertyAttribute>() != null)
-                                .ToDictionary(a => variablePropertyType.GetPropertyDisplayName(a.Name));
+                                .ToDictionary(a => variablePropertyType.GetPropertyDisplayName(a.Name, a => a.GetCustomAttribute<DynamicPropertyAttribute>(true)?.Description));
 
                             // 获取目标类型的所有属性，并根据是否需要过滤 IgnoreExcelAttribute 进行筛选
                             var properties = propertys.Item1.GetRuntimeProperties().Where(a => (a.GetCustomAttribute<IgnoreExcelAttribute>() == null) && a.CanWrite)
-                                            .ToDictionary(a => propertys.Item1.GetPropertyDisplayName(a.Name));
+                                            .ToDictionary(a => propertys.Item1.GetPropertyDisplayName(a.Name, a => a.GetCustomAttribute<DynamicPropertyAttribute>(true)?.Description));
 
                             propertys.Item3 = properties;
                             propertysDict.TryAdd(driverPluginType.FullName, propertys);

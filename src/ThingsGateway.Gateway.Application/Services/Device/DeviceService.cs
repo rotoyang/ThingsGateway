@@ -4,7 +4,7 @@
 //  源代码使用协议遵循本仓库的开源协议及附加协议
 //  Gitee源代码仓库：https://gitee.com/diego2098/ThingsGateway
 //  Github源代码仓库：https://github.com/kimdiego2098/ThingsGateway
-//  使用文档：https://kimdiego2098.github.io/
+//  使用文档：https://thingsgateway.cn/
 //  QQ群：605534569
 //------------------------------------------------------------------------------
 
@@ -26,6 +26,7 @@ using System.Text;
 
 using ThingsGateway.Extension.Generic;
 using ThingsGateway.Foundation.Extension.Dynamic;
+using ThingsGateway.FriendlyException;
 
 using TouchSocket.Core;
 
@@ -33,7 +34,7 @@ using Yitter.IdGenerator;
 
 namespace ThingsGateway.Gateway.Application;
 
-public class DeviceService : BaseService<Device>, IDeviceService
+internal class DeviceService : BaseService<Device>, IDeviceService
 {
     protected readonly IChannelService _channelService;
     protected readonly IPluginService _pluginService;
@@ -43,8 +44,8 @@ public class DeviceService : BaseService<Device>, IDeviceService
     IDispatchService<Device> dispatchService
         )
     {
-        _channelService = NetCoreApp.RootServices.GetRequiredService<IChannelService>();
-        _pluginService = NetCoreApp.RootServices.GetRequiredService<IPluginService>();
+        _channelService = App.RootServices.GetRequiredService<IChannelService>();
+        _pluginService = App.RootServices.GetRequiredService<IPluginService>();
         _dispatchService = dispatchService;
     }
 
@@ -73,7 +74,7 @@ public class DeviceService : BaseService<Device>, IDeviceService
     [OperDesc("ClearDevice", localizerType: typeof(Device))]
     public async Task ClearDeviceAsync(PluginTypeEnum pluginType)
     {
-        var variableService = NetCoreApp.RootServices.GetRequiredService<IVariableService>();
+        var variableService = App.RootServices.GetRequiredService<IVariableService>();
         using var db = GetDB();
         //事务
         var result = await db.UseTranAsync(async () =>
@@ -96,7 +97,7 @@ public class DeviceService : BaseService<Device>, IDeviceService
     [OperDesc("DeleteDevice", isRecordPar: false, localizerType: typeof(Device))]
     public async Task DeleteByChannelIdAsync(IEnumerable<long> ids, SqlSugarClient db)
     {
-        var variableService = NetCoreApp.RootServices.GetRequiredService<IVariableService>();
+        var variableService = App.RootServices.GetRequiredService<IVariableService>();
         //事务
         var result = await db.UseTranAsync(async () =>
         {
@@ -118,7 +119,7 @@ public class DeviceService : BaseService<Device>, IDeviceService
     [OperDesc("DeleteDevice", isRecordPar: false, localizerType: typeof(Device))]
     public async Task<bool> DeleteDeviceAsync(IEnumerable<long> ids)
     {
-        var variableService = NetCoreApp.RootServices.GetRequiredService<IVariableService>();
+        var variableService = App.RootServices.GetRequiredService<IVariableService>();
 
         using var db = GetDB();
         //事务
@@ -142,7 +143,7 @@ public class DeviceService : BaseService<Device>, IDeviceService
     /// <inheritdoc />
     public void DeleteDeviceFromCache()
     {
-        NetCoreApp.CacheService.Remove(ThingsGatewayCacheConst.Cache_Device);//删除设备缓存
+        App.CacheService.Remove(ThingsGatewayCacheConst.Cache_Device);//删除设备缓存
         _dispatchService.Dispatch(new());
     }
 
@@ -153,12 +154,12 @@ public class DeviceService : BaseService<Device>, IDeviceService
     public List<Device> GetAll()
     {
         var key = ThingsGatewayCacheConst.Cache_Device;
-        var devices = NetCoreApp.CacheService.Get<List<Device>>(key);
+        var devices = App.CacheService.Get<List<Device>>(key);
         if (devices == null)
         {
             using var db = GetDB();
             devices = db.Queryable<Device>().ToList();
-            NetCoreApp.CacheService.Set(key, devices);
+            App.CacheService.Set(key, devices);
         }
         return devices;
     }
@@ -201,7 +202,7 @@ public class DeviceService : BaseService<Device>, IDeviceService
     {
         if (devId == null)
         {
-            var variableService = NetCoreApp.RootServices.GetRequiredService<IVariableService>();
+            var variableService = App.RootServices.GetRequiredService<IVariableService>();
             var devices = GetAll().Where(a => a.Enable && a.PluginType == PluginTypeEnum.Collect);
             var channels = _channelService.GetAll().Where(a => a.Enable);
             devices = devices.Where(a => channels.Select(a => a.Id).Contains(a.ChannelId));
@@ -238,7 +239,7 @@ public class DeviceService : BaseService<Device>, IDeviceService
             }
 
             var runtime = device.Adapt<CollectDeviceRunTime>();
-            var variableService = NetCoreApp.RootServices.GetRequiredService<IVariableService>();
+            var variableService = App.RootServices.GetRequiredService<IVariableService>();
             var collectVariableRunTimes = await variableService.GetVariableRuntimeAsync(devId).ConfigureAwait(false);
             runtime.VariableRunTimes = collectVariableRunTimes.ToDictionary(a => a.Name);
             runtime.Channel = channels.FirstOrDefault(a => a.Id == runtime.ChannelId);
@@ -444,7 +445,7 @@ public class DeviceService : BaseService<Device>, IDeviceService
                 var driverPropertyType = driverProperties.GetType();
                 propertys.Item2 = driverPropertyType.GetRuntimeProperties()
 .Where(a => a.GetCustomAttribute<DynamicPropertyAttribute>() != null)
-.ToDictionary(a => driverPropertyType.GetPropertyDisplayName(a.Name), a => a);
+.ToDictionary(a => driverPropertyType.GetPropertyDisplayName(a.Name, a => a.GetCustomAttribute<DynamicPropertyAttribute>(true)?.Description), a => a);
 
                 propertysDict.TryAdd(device.PluginName, propertys);
             }
@@ -566,7 +567,7 @@ public class DeviceService : BaseService<Device>, IDeviceService
             var driverPluginFullNameDict = _pluginService.GetList().ToDictionary(a => a.FullName);
 
             // 获取所有驱动程序，并将驱动程序名称作为键构建字典
-            var driverPluginNameDict = _pluginService.GetList().ToDictionary(a => a.Name);
+            var driverPluginNameDict = _pluginService.GetList().DistinctBy(a => a.Name).ToDictionary(a => a.Name);
             ConcurrentDictionary<string, (Type, Dictionary<string, PropertyInfo>, Dictionary<string, PropertyInfo>)> propertysDict = new();
             foreach (var sheetName in sheetNames)
             {
@@ -752,11 +753,11 @@ public class DeviceService : BaseService<Device>, IDeviceService
 
                         propertys.Item2 = type.GetRuntimeProperties()
                             .Where(a => a.GetCustomAttribute<DynamicPropertyAttribute>() != null && a.CanWrite)
-                            .ToDictionary(a => type.GetPropertyDisplayName(a.Name));
+                            .ToDictionary(a => type.GetPropertyDisplayName(a.Name, a => a.GetCustomAttribute<DynamicPropertyAttribute>(true)?.Description));
 
                         // 获取目标类型的所有属性，并根据是否需要过滤 IgnoreExcelAttribute 进行筛选
                         var properties = propertys.Item1.GetRuntimeProperties().Where(a => (a.GetCustomAttribute<IgnoreExcelAttribute>() == null) && a.CanWrite)
-                                        .ToDictionary(a => propertys.Item1.GetPropertyDisplayName(a.Name));
+                                        .ToDictionary(a => propertys.Item1.GetPropertyDisplayName(a.Name, a => a.GetCustomAttribute<DynamicPropertyAttribute>(true)?.Description));
 
                         propertys.Item3 = properties;
                         propertysDict.TryAdd(driverPluginType.FullName, propertys);

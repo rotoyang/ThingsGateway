@@ -4,7 +4,7 @@
 //  源代码使用协议遵循本仓库的开源协议及附加协议
 //  Gitee源代码仓库：https://gitee.com/diego2098/ThingsGateway
 //  Github源代码仓库：https://github.com/kimdiego2098/ThingsGateway
-//  使用文档：https://kimdiego2098.github.io/
+//  使用文档：https://thingsgateway.cn/
 //  QQ群：605534569
 //------------------------------------------------------------------------------
 
@@ -13,17 +13,18 @@ namespace ThingsGateway.Gateway.Application;
 /// <summary>
 /// Cache常量
 /// </summary>
+[ThingsGateway.DependencyInjection.SuppressSniffer]
 public class ThingsGatewayCacheConst
 {
     /// <summary>
     /// 通道
     /// </summary>
-    public const string Cache_Channel = Cache_Prefix + "Cache_Channel:";
+    public const string Cache_Channel = $"{Cache_Prefix}Cache_Channel:";
 
     /// <summary>
     /// device
     /// </summary>
-    public const string Cache_Device = Cache_Prefix + "Cache_Device:";
+    public const string Cache_Device = $"{Cache_Prefix}Cache_Device:";
 
     /// <summary>
     /// 前缀

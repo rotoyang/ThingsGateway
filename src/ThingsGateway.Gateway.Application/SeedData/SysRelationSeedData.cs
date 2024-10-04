@@ -4,7 +4,7 @@
 //  源代码使用协议遵循本仓库的开源协议及附加协议
 //  Gitee源代码仓库：https://gitee.com/diego2098/ThingsGateway
 //  Github源代码仓库：https://github.com/kimdiego2098/ThingsGateway
-//  使用文档：https://kimdiego2098.github.io/
+//  使用文档：https://thingsgateway.cn/
 //  QQ群：605534569
 //------------------------------------------------------------------------------
 
@@ -18,6 +18,8 @@ public class SysRelationSeedData : ISqlSugarEntitySeedData<SysRelation>
     /// <inheritdoc/>
     public IEnumerable<SysRelation> SeedData()
     {
-        return SeedDataUtil.GetSeedData<SysRelation>(PathExtensions.CombinePathWithOs("SeedData", "Json", "seed_gateway_relation.json"));
+        var data = SeedDataUtil.GetSeedData<SysRelation>(PathExtensions.CombinePathWithOs("SeedData", "Gateway", "seed_gateway_relation.json"));
+        var assembly = GetType().Assembly;
+        return SeedDataUtil.GetSeedDataByJson<SysRelation>(SeedDataUtil.GetManifestResourceStream(assembly, "SeedData.Gateway.seed_gateway_relation.json")).Concat(data);
     }
 }

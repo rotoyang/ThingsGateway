@@ -4,15 +4,13 @@
 //  源代码使用协议遵循本仓库的开源协议及附加协议
 //  Gitee源代码仓库：https://gitee.com/diego2098/ThingsGateway
 //  Github源代码仓库：https://github.com/kimdiego2098/ThingsGateway
-//  使用文档：https://kimdiego2098.github.io/
+//  使用文档：https://thingsgateway.cn/
 //  QQ群：605534569
 //------------------------------------------------------------------------------
 
 using BootstrapBlazor.Components;
 
 using Microsoft.AspNetCore.Components.Forms;
-
-using TouchSocket.Core;
 
 namespace ThingsGateway.Gateway.Application;
 
@@ -64,14 +62,6 @@ public interface IChannelService
     /// </summary>
     /// <returns>通道列表</returns>
     List<Channel> GetAll();
-
-    /// <summary>
-    /// 通过配置获取通道
-    /// </summary>
-    /// <param name="channel">通道对象</param>
-    /// <param name="config">配置信息</param>
-    /// <returns>通道</returns>
-    IChannel GetChannel(Channel channel, TouchSocketConfig config);
 
     /// <summary>
     /// 通过ID获取通道
